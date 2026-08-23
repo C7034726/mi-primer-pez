@@ -1,58 +1,92 @@
-import pygame, math, random
+import pygame
+import math
+import random
 
 pygame.init()
-W, H = 1000, 600
-screen = pygame.display.set_mode((W, H))
-pygame.display.set_caption("Pez de Luis - Ya eres programador")
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Pez de Luis - NIVEL 2 - ¡A COMER!")
 clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 36)
 
-N = 22
-elems = [{"x": W//2, "y": 0} for _ in range(N)]
-pointer = {"x": W//2, "y": H//2}
-frm = random.random()
+# Pez
+x = 100
+y = 300
+speed = 3
+direction = 1
+wiggle = 0
+score = 0
+
+# Comida
+food_x = random.randint(100, 700)
+food_y = random.randint(100, 500)
+food_size = 15
+
+# Boca abierta?
+mouth_open = False
+mouth_timer = 0
 
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if event.type == pygame.MOUSEMOTION:
-            pointer["x"], pointer["y"] = event.pos
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                mouth_open = True
+                mouth_timer = 10  # frames que dura abierta
 
-    frm += 0.08
-    elems[0]["x"] = pointer["x"]
-    elems[0]["y"] = pointer["y"]
+    # Movimiento
+    x += speed * direction
+    y = 300 + math.sin(wiggle) * 80
+    wiggle += 0.08
+    
+    if x > WIDTH - 80 or x < 20:
+        direction *= -1
 
-    for i in range(1, N):
-        prev = elems[i-1]
-        cur = elems[i]
-        dx = prev["x"] - cur["x"]
-        dy = prev["y"] - cur["y"]
-        dist = math.hypot(dx, dy)
-        angle = math.atan2(dy, dx)
-        cur["x"] += math.cos(angle) * (dist - 18) * 0.3
-        cur["y"] += math.sin(angle) * (dist - 18) * 0.3
+    # Comer
+    dist = math.hypot((x+160 - food_x), (y - food_y))
+    if dist < 40 and mouth_open:
+        score += 1
+        food_x = random.randint(100, 700)
+        food_y = random.randint(100, 500)
+        print(f"¡ÑAM! Puntos: {score}")
 
-    screen.fill((232, 221, 209))
+    if mouth_timer > 0:
+        mouth_timer -= 1
+    else:
+        mouth_open = False
 
-    for i in range(1, N):
-        cur = elems[i]
-        prev = elems[i-1]
-        angle = math.atan2(prev["y"]-cur["y"], prev["x"]-cur["x"])
-        if i == 1:
-            pygame.draw.polygon(screen, (17,17,17), [
-                (cur["x"] + 20*math.cos(angle), cur["y"] + 20*math.sin(angle)),
-                (cur["x"] + 10*math.cos(angle+2), cur["y"] + 10*math.sin(angle+2)),
-                (cur["x"] + 10*math.cos(angle-2), cur["y"] + 10*math.sin(angle-2)),
-            ])
-        elif i in (8, 14):
-            for j in range(5):
-                fx = cur["x"] + math.cos(angle + math.radians(j*15-30)) * (30+j*5)
-                fy = cur["y"] + math.sin(angle + math.radians(j*15-30)) * (30+j*5)
-                pygame.draw.line(screen, (34,34,34), (cur["x"], cur["y"]), (fx, fy), 2)
-        else:
-            pygame.draw.circle(screen, (34,34,34), (int(cur["x"]), int(cur["y"])), int(max(2, 10 - i*0.3)))
-        pygame.draw.line(screen, (50,50,50), (cur["x"], cur["y"]), (prev["x"], prev["y"]), 2)
+    # DIBUJO
+    screen.fill((15, 30, 80))
+
+    # Comida (camarón rojo)
+    pygame.draw.circle(screen, (255, 80, 80), (food_x, food_y), food_size)
+
+    # Pez esqueleto
+    for i in range(8):
+        offset = math.sin(wiggle + i*0.6) * 12
+        pygame.draw.circle(screen, (255, 255, 255), (int(x + i*22), int(y + offset)), 9)
+    
+    # Cabeza
+    head_x = int(x + 8*22)
+    head_y = int(y + math.sin(wiggle + 8*0.6)*12)
+    if mouth_open:
+        # boca abierta grande
+        pygame.draw.circle(screen, (255,255,255), (head_x, head_y), 22, 3)
+        pygame.draw.circle(screen, (0,0,0), (head_x, head_y), 8)
+    else:
+        pygame.draw.circle(screen, (255,255,255), (head_x, head_y), 18)
+        pygame.draw.circle(screen, (0,0,0), (head_x, head_y), 6)
+
+    # Cola
+    tail_x = int(x)
+    tail_y = int(y + math.sin(wiggle)*12)
+    pygame.draw.polygon(screen, (200,200,255), [(tail_x, tail_y), (tail_x-25, tail_y-18), (tail_x-25, tail_y+18)])
+
+    # Marcador
+    texto = font.render(f"Puntos: {score}  [ESPACIO para comer]", True, (255,255,255))
+    screen.blit(texto, (20, 20))
 
     pygame.display.flip()
     clock.tick(60)
