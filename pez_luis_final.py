@@ -1,139 +1,89 @@
-import pygame
-import math
-import random
-
+import pygame, math, random
 pygame.init()
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 900, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Pez de Luis - NIVEL 4 - JUEGO FINAL")
+pygame.display.set_caption("Pez de Luis - NIVEL 5 - MULTIJUGADOR")
 clock = pygame.time.Clock()
-font_big = pygame.font.SysFont(None, 60, bold=True)
-font = pygame.font.SysFont(None, 36)
+font = pygame.font.SysFont(None, 32)
+big = pygame.font.SysFont(None, 70, bold=True)
 
-# --- SONIDO ÑAM simple ---
-pygame.mixer.init()
-def sonido_nam():
-    # beep casero
-    try:
-        pygame.mixer.Sound(pygame.mixer.Sound.buffer_size)
-    except:
-        pass
-    print("\a") # beep del sistema
+# Jugador 1 - Luis (Blanco)
+p1_x, p1_y, p1_score, p1_size = 200, 300, 0, 9
+# Jugador 2 - Amigo (Naranja)
+p2_x, p2_y, p2_score, p2_size = 600, 300, 0, 9
 
-# Variables
-x, y = 400, 300
-speed = 5
+food_x = random.randint(100, 800)
+food_y = random.randint(100, 500)
 wiggle = 0
-score = 0
-size = 9  # tamaño inicial del pez
-vidas = 3
-game_over = False
-
-food_x = random.randint(50, 750)
-food_y = random.randint(50, 550)
-shark_x = -100
-shark_y = 300
-shark_speed = 2.5
+winner = None
 
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if game_over and event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_r:
-                # REINICIAR
-                x, y = 400, 300
-                score = 0
-                size = 9
-                vidas = 3
-                game_over = False
-                shark_x = -100
+        if winner and event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+            p1_score = p2_score = 0
+            p1_size = p2_size = 9
+            p1_x, p1_y = 200, 300
+            p2_x, p2_y = 600, 300
+            winner = None
 
-    if not game_over:
-        # Controles
+    if not winner:
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_UP]: y -= speed
-        if keys[pygame.K_DOWN]: y += speed
-        if keys[pygame.K_LEFT]: x -= speed
-        if keys[pygame.K_RIGHT]: x += speed
+        # P1 Flechas
+        if keys[pygame.K_UP]: p1_y -= 5
+        if keys[pygame.K_DOWN]: p1_y += 5
+        if keys[pygame.K_LEFT]: p1_x -= 5
+        if keys[pygame.K_RIGHT]: p1_x += 5
+        # P2 WASD
+        if keys[pygame.K_w]: p2_y -= 5
+        if keys[pygame.K_s]: p2_y += 5
+        if keys[pygame.K_a]: p2_x -= 5
+        if keys[pygame.K_d]: p2_x += 5
 
-        x = max(20, min(WIDTH-80, x))
-        y = max(20, min(HEIGHT-20, y))
+        p1_x = max(0, min(WIDTH-60, p1_x))
+        p1_y = max(0, min(HEIGHT-20, p1_y))
+        p2_x = max(0, min(WIDTH-60, p2_x))
+        p2_y = max(0, min(HEIGHT-20, p2_y))
+
         wiggle += 0.15
 
-        # Tiburon te sigue
-        if shark_x < x:
-            shark_x += shark_speed
-        else:
-            shark_x -= shark_speed * 0.5
-        if shark_y < y:
-            shark_y += shark_speed * 0.3
-        else:
-            shark_y -= shark_speed * 0.3
+        # Comer P1
+        if math.hypot(p1_x+30-food_x, p1_y-food_y) < 30+p1_size:
+            p1_score+=1; p1_size+=1
+            food_x = random.randint(100,800); food_y = random.randint(100,500)
+        # Comer P2
+        if math.hypot(p2_x+30-food_x, p2_y-food_y) < 30+p2_size:
+            p2_score+=1; p2_size+=1
+            food_x = random.randint(100,800); food_y = random.randint(100,500)
 
-        # Comer
-        dist = math.hypot((x+40 - food_x), (y - food_y))
-        if dist < 35 + size:
-            score += 1
-            size += 0.8  # ¡CRECE!
-            shark_speed += 0.15  # se pone más difícil
-            food_x = random.randint(50, 750)
-            food_y = random.randint(50, 550)
-            sonido_nam()
-            print(f"¡ÑAM! Puntos: {score} - Tamaño: {size:.1f}")
-
-        # Choque tiburon
-        dist_shark = math.hypot((x - shark_x), (y - shark_y))
-        if dist_shark < 45 + size:
-            vidas -= 1
-            x, y = 400, 300
-            shark_x = -200
-            shark_y = random.randint(50, 550)
-            print(f"¡OUCH! Te quedan {vidas} vidas")
-            if vidas <= 0:
-                game_over = True
+        if p1_score >= 10: winner = "LUIS (BLANCO)"
+        if p2_score >= 10: winner = "AMIGO (NARANJA)"
 
     # DIBUJO
-    screen.fill((10, 30, 70))
+    screen.fill((10, 40, 90))
+    pygame.draw.circle(screen, (255,80,80), (food_x, food_y), 14)
 
-    if not game_over:
-        # Comida
-        pygame.draw.circle(screen, (255, 80, 80), (food_x, food_y), 12)
-        pygame.draw.circle(screen, (255, 220, 220), (food_x, food_y), 5)
+    # Pez 1 Blanco
+    for i in range(5):
+        off = math.sin(wiggle+i)*8
+        pygame.draw.circle(screen, (255,255,255), (int(p1_x+i*12), int(p1_y+off)), int(p1_size))
+    # Pez 2 Naranja
+    for i in range(5):
+        off = math.sin(wiggle+i+1)*8
+        pygame.draw.circle(screen, (255,180,50), (int(p2_x+i*12), int(p2_y+off)), int(p2_size))
 
-        # Tiburon
-        pygame.draw.ellipse(screen, (100,100,110), (int(shark_x-35), int(shark_y-18), 70, 36))
-        pygame.draw.polygon(screen, (80,80,90), [(shark_x-35, shark_y), (shark_x-55, shark_y-22), (shark_x-55, shark_y+22)])
-        pygame.draw.polygon(screen, (90,90,100), [(shark_x+5, shark_y-18), (shark_x+15, shark_y-30), (shark_x+10, shark_y-18)])
+    # HUD
+    t = font.render(f"LUIS [Flechas]: {p1_score} | AMIGO [WASD]: {p2_score} | Primero a 10 gana!", True, (255,255,255))
+    screen.blit(t, (10,10))
 
-        # Tu pez - AHORA CRECE con size
-        for i in range(7):
-            offset = math.sin(wiggle + i*0.5) * 10
-            pygame.draw.circle(screen, (255,255,255), (int(x + i*18), int(y + offset)), int(size))
-
-        head_x = int(x + 7*18)
-        head_y = int(y + math.sin(wiggle + 7*0.5)*10)
-        pygame.draw.circle(screen, (255,255,255), (head_x, head_y), int(size+7))
-        pygame.draw.circle(screen, (0,0,0), (head_x+5, head_y), 4)
-
-        # Cola
-        pygame.draw.polygon(screen, (180,220,255), [(int(x), int(y)), (int(x-22), int(y-15)), (int(x-22), int(y+15))])
-
-        # HUD
-        txt = font.render(f"Puntos: {score} | Tamaño: {int(size)} | Vidas: {vidas} | Flechas para moverte", True, (255,255,255))
-        screen.blit(txt, (10, 10))
-    else:
-        # PANTALLA GAME OVER
-        screen.fill((20, 10, 40))
-        t1 = font_big.render("GAME OVER", True, (255, 80, 80))
-        t2 = font_big.render(f"PUNTOS: {score}", True, (255,255,255))
-        t3 = font.render(f"¡Increíble, LUIS! Hiciste crecer tu pez a tamaño {int(size)}", True, (180, 220, 255))
-        t4 = font.render("Presiona R para jugar de nuevo - Presiona X para cerrar", True, (255,255,255))
-        screen.blit(t1, (WIDTH//2 - t1.get_width()//2, 150))
-        screen.blit(t2, (WIDTH//2 - t2.get_width()//2, 230))
-        screen.blit(t3, (WIDTH//2 - t3.get_width()//2, 310))
-        screen.blit(t4, (WIDTH//2 - t4.get_width()//2, 380))
+    if winner:
+        screen.fill((0,0,0))
+        txt = big.render(f"¡GANA {winner}!", True, (255,255,0))
+        txt2 = font.render("Presiona R para revancha", True, (255,255,255))
+        screen.blit(txt, (WIDTH//2 - txt.get_width()//2, 250))
+        screen.blit(txt2, (WIDTH//2 - txt2.get_width()//2, 350))
 
     pygame.display.flip()
     clock.tick(60)
